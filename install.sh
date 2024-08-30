@@ -230,10 +230,11 @@ __run_pre_install() {
 # run before primary post install function
 __run_prepost_install() {
   local getRunStatus=0
-  rm -Rf /etc/named* /var/log/named/* /var/named/*
-  mkdir -p /etc/named /var/log/named /var/named /var/named/dynamic /var/named/primary /var/named/secondary
-  for f in "/etc/named/zones.conf" /var/log/named/{debug.info,querylog.log,security.log,xfer.log,update.log,notify.log,default.log}; do touch "$f"; done
-
+  if [ ! -f "/etc/named/.installed" ]; then
+    rm -Rf /etc/named* /var/log/named/* /var/named/*
+    mkdir -p /etc/named /var/log/named /var/named /var/named/dynamic /var/named/primary /var/named/secondary
+    for f in "/etc/named/zones.conf" /var/log/named/{debug.info,querylog.log,security.log,xfer.log,update.log,notify.log,default.log}; do touch "$f"; done
+  fi
   return $getRunStatus
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -241,19 +242,21 @@ __run_prepost_install() {
 __run_post_install() {
   local getRunStatus=0
   local def_tsig_key="5gbnC2IvylKFZyu1mwGeLYi0Fv1sNwNWSt1IH51m8XY4mUrxWhuR4TqC9RIf6zrWkL/13E/a4X30vF/dWtylmQ=="
-  for KEY in DHCP RNDC CERTBOT BACKUP; do
-    tsig_key="$(tsig-keygen -a hmac-sha512 | grep 'secret' | sed 's|.*secret "||g;s|"||g;s|;||g' | grep '^' || echo "$def_tsig_key")"
-    __replace_all "REPLACE_KEY_${KEY}" "$tsig_key" "$INSTDIR/etc/named"
-    __replace_all "REPLACE_KEY_${KEY}" "$tsig_key" "$INSTDIR/var/named"
-  done
-  [ -d "$INSTDIR/etc" ] && __cp_rf "$INSTDIR/etc/." "/etc/"
-  [ -d "$INSTDIR/var" ] && __cp_rf "$INSTDIR/var/." "/var/"
-  [ -f "/etc/named/rndc.key" ] && __ln "/etc/named/rndc.key" "/etc/named/rndc.key"
-  [ -f "/etc/named//named.conf" ] && __ln /etc/named//named.conf "/etc/named.conf"
-  grep 'named:' /etc/group && chgrp -Rf 'named' /etc/named /var/log/named /var/named 2>/dev/null
-  grep 'named:' /etc/passwd && chown -Rf 'named' /etc/named /var/log/named /var/named 2>/dev/null
-  __service_exists named && __system_service_enable named && systemctl restart named
-
+  if [ ! -f "/etc/named/.installed" ]; then
+    for KEY in DHCP RNDC CERTBOT BACKUP; do
+      tsig_key="$(tsig-keygen -a hmac-sha512 | grep 'secret' | sed 's|.*secret "||g;s|"||g;s|;||g' | grep '^' || echo "$def_tsig_key")"
+      __replace_all "REPLACE_KEY_${KEY}" "$tsig_key" "$INSTDIR/etc/named"
+      __replace_all "REPLACE_KEY_${KEY}" "$tsig_key" "$INSTDIR/var/named"
+    done
+    [ -d "$INSTDIR/etc" ] && __cp_rf "$INSTDIR/etc/." "/etc/"
+    [ -d "$INSTDIR/var" ] && __cp_rf "$INSTDIR/var/." "/var/"
+    [ -f "/etc/named/rndc.key" ] && __ln "/etc/named/rndc.key" "/etc/named/rndc.key"
+    [ -f "/etc/named//named.conf" ] && __ln /etc/named//named.conf "/etc/named.conf"
+    grep 'named:' /etc/group && chgrp -Rf 'named' /etc/named /var/log/named /var/named 2>/dev/null
+    grep 'named:' /etc/passwd && chown -Rf 'named' /etc/named /var/log/named /var/named 2>/dev/null
+    __service_exists named && __system_service_enable named && systemctl restart named
+    echo "Installed on $(date)" >"/etc/named/.installed"
+  fi
   return $getRunStatus
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
