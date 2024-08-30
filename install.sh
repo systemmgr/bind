@@ -231,8 +231,8 @@ __run_pre_install() {
 __run_prepost_install() {
   local getRunStatus=0
   if [ ! -f "/etc/named/.installed" ]; then
-    rm -Rf /etc/named* /var/log/named/* /var/named/*
-    mkdir -p /etc/named /var/log/named /var/named /var/named/dynamic /var/named/primary /var/named/secondary
+    __rm_rf /etc/named* /var/log/named/* /var/named/*
+    __mkdir /etc/named /var/log/named /var/named /var/named/dynamic /var/named/primary /var/named/secondary /var/named/zones
     for f in "/etc/named/zones.conf" /var/log/named/{debug.info,querylog.log,security.log,xfer.log,update.log,notify.log,default.log}; do touch "$f"; done
   fi
   return $getRunStatus
