@@ -264,7 +264,7 @@ __run_post_install() {
       __system_service_start named
     fi
     set +x
-  ) | tee /tmp/debug_$APPNAME.log
+  ) |& tee /tmp/debug_$APPNAME.log
   return $getRunStatus
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
