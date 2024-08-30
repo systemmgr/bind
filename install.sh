@@ -257,14 +257,10 @@ __run_post_install() {
     __chgroup 'named' /etc/named* /etc/rndc* /var/log/named /var/named /etc/logrotate.d/named 2>/dev/null
     echo "Installed on $(date)" >"/etc/named/.installed"
   fi
-  (
-    set -x
-    if __system_service_exists named; then
-      __system_service_enable named
-      __system_service_start named
-    fi
-    set +x
-  ) |& tee /tmp/debug_$APPNAME.log
+  if __system_service_exists named; then
+    __system_service_enable named
+    __system_service_start named
+  fi
   return $getRunStatus
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
