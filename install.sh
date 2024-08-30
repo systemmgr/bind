@@ -128,6 +128,8 @@ __system_service_start() { __system_service_active "$1" && systemctl restart "$1
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __get_user_name() { grep ':' /etc/passwd | awk -F ':' '{print $1}' | sort -u | grep "^${1:-root}$" || return 1; }
 __get_user_group() { grep ':' /etc/group | awk -F ':' '{print $1}' | sort -u | grep "^${1:-root}$" || return 1; }
+__chuser() { local user=$1 && shift && grep -qs "^$user:" /etc/passwd && chown -Rf "$user" "$@" 2>/dev/null; }
+__chgroup() { local group=$1 && shift && grep -qs "^$group:" /etc/group && chgrp -Rf "$group" "$@" 2>/dev/null; }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 sed="$(builtin type -P gsed 2>/dev/null || builtin type -P sed 2>/dev/null || return)"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -253,8 +255,8 @@ __run_post_install() {
     [ -d "$INSTDIR/var" ] && __cp_rf "$INSTDIR/var/." "/var/"
     [ -f "/etc/named/rndc.key" ] && __ln "/etc/named/rndc.key" "/etc/named/rndc.key"
     [ -f "/etc/named//named.conf" ] && __ln /etc/named//named.conf "/etc/named.conf"
-    grep 'named:' /etc/group && chgrp -Rf 'named' /etc/named* /etc/rndc* /var/log/named /var/named 2>/dev/null
-    grep 'named:' /etc/passwd && chown -Rf 'named' /etc/named* /etc/rndc* /var/log/named /var/named 2>/dev/null
+    __chuser 'named' /etc/named* /etc/rndc* /var/log/named /var/named 2>/dev/null
+    __chgroup 'named' /etc/named* /etc/rndc* /var/log/named /var/named 2>/dev/null
     echo "Installed on $(date)" >"/etc/named/.installed"
   fi
   if __service_exists named; then
