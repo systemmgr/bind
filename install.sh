@@ -228,6 +228,7 @@ __run_post_install() {
   [ -d "$INSTDIR/etc" ] && __cp_rf "$INSTDIR/etc/." "/etc/"
   [ -d "$INSTDIR/var" ] && __cp_rf "$INSTDIR/var/." "/var/"
   [ -f "/etc/named/rndc.key" ] && __ln "/etc/named/rndc.key" "/etc/named/rndc.key"
+  [ -f "/etc/named//named.conf" ] && __ln /etc/named//named.conf "/etc/named.conf"
   grep 'named:' /etc/group && chgrp -Rf 'named' /etc/named /var/log/named /var/named 2>/dev/null
   grep 'named:' /etc/passwd && chown -Rf 'named' /etc/named /var/log/named /var/named 2>/dev/null
   return $getRunStatus
