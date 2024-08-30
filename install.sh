@@ -233,7 +233,7 @@ __run_prepost_install() {
   local getRunStatus=0
   if [ ! -f "/etc/named/.installed" ]; then
     __rm_rf /etc/named* /var/log/named/* /var/named/*
-    __mkdir /etc/named /var/log/named /var/named /var/named/dynamic /var/named/primary /var/named/secondary /var/named/zones
+    __mkdir /etc/named /var/log/named /var/named /var/named/dynamic /var/named/primary /var/named/secondary /var/named/zones /var/named/data
     for f in "/etc/named/zones.conf" /var/log/named/{debug.info,querylog.log,security.log,xfer.log,update.log,notify.log,default.log}; do touch "$f"; done
   fi
   return $getRunStatus
@@ -253,8 +253,8 @@ __run_post_install() {
     [ -d "$INSTDIR/var" ] && __cp_rf "$INSTDIR/var/." "/var/"
     [ -f "/etc/named/rndc.key" ] && __ln "/etc/named/rndc.key" "/etc/named/rndc.key"
     [ -f "/etc/named//named.conf" ] && __ln /etc/named//named.conf "/etc/named.conf"
-    __chuser 'named' /etc/named* /etc/rndc* /var/log/named /var/named 2>/dev/null
-    __chgroup 'named' /etc/named* /etc/rndc* /var/log/named /var/named 2>/dev/null
+    __chuser 'named' /etc/named* /etc/rndc* /var/log/named /var/named /etc/logrotate.d/named 2>/dev/null
+    __chgroup 'named' /etc/named* /etc/rndc* /var/log/named /var/named /etc/logrotate.d/named 2>/dev/null
     echo "Installed on $(date)" >"/etc/named/.installed"
   fi
   set -x
