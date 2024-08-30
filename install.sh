@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202408291920-git
+##@Version           :  202408292100-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
-# @@License          :  WTFPL
+# @@License          :  LICENSE.md
 # @@ReadME           :  install.sh --help
 # @@Copyright        :  Copyright: (c) 2024 Jason Hempstead, Casjays Developments
-# @@Created          :  Thursday, Aug 29, 2024 19:20 EDT
+# @@Created          :  Thursday, Aug 29, 2024 21:00 EDT
 # @@File             :  install.sh
 # @@Description      :  Install configurations for bind
 # @@Changelog        :  New script
@@ -27,7 +27,7 @@
 # shellcheck disable=SC2317
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="bind"
-VERSION="202408291920-git"
+VERSION="202408292100-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -71,6 +71,21 @@ else
   exit 90
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# printf_space spacing color message value
+__printf_space() {
+  test -n "$1" && test -z "${1//[0-9]/}" && local padl="$1" && shift 1 || local padl="40"
+  test -n "$1" && test -z "${1//[0-9]/}" && local color="$1" && shift 1 || local color="7"
+  local string1="$1"
+  local string2="$2"
+  local pad=$(printf '%0.1s' " "{1..60})
+  local message="$(printf "%b" "$(tput setaf "$color" 2>/dev/null)")"
+  message+="$(printf '%s' "$string1") "
+  message+="$(printf '%*.*s' 0 $((padl - ${#string1} - ${#string2})) "$pad") "
+  message+="$(printf '%s' "$string2") "
+  message+="$(printf '%b\n' "$(tput sgr0 2>/dev/null)")"
+  printf '%s\n' "$message"
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Define custom functions
 __am_i_online() { connect_test || return 1; }
 __run_git_clone_pull() { git_update "$1" "$2"; }
@@ -88,9 +103,6 @@ __download_file() { curl -q -LSsf "$1" -o "$2" 2>/dev/null || return 1; }
 __input_is_number() { test -n "$1" && test -z "${1//[0-9]/}" || return 1; }
 __failexitcode() { [ $1 -ne 0 ] && printf_red "😠 $2 😠" && exit ${1:-4}; }
 __get_exit_status() { local s=$? && getRunStatus=$((s + ${getRunStatus:-0})) && return $s; }
-__service_exists() { systemctl list-unit-files | grep "^$1" || return 1; }
-__service_is_running() { systemctl is-active $1 2>&1 | grep -qiw 'active' || return 1; }
-__service_is_active() { systemctl is-enabled $1 2>&1 | grep -qiw 'enabled' || return 1; }
 __get_version() { echo "$@" | awk -F '.' '{ printf("%d%d%d%d\n", $1,$2,$3,$4) }'; }
 __silent_start() { __cmd_exists $1 && (eval "$*" &>/dev/null &) && __app_is_running $1 || return 1; }
 __total_memory() { mem="$(free | grep -i 'mem: ' | awk -F ' ' '{print $2}')" && echo $((mem / 1000)); }
@@ -104,6 +116,14 @@ __port_in_use() { netstat -tauln 2>&1 | grep ' LISTEN' | awk -F' ' '{print $4}' 
 __replace_all() { [ -n "$3" ] && [ -e "$3" ] && find "$3" -not -path "$3/.git/*" -type f -exec $sed -i "s|$1|$2|g" {} \; >/dev/null 2>&1 || return 1; }
 __kill_process_name() { local pid="$(pidof "$1" 2>/dev/null)" && { [ -z "$pid" ] || { kill -19 $pid &>/dev/null && ! __app_is_running "$1" && return 0; } || kill -9 $pid &>/dev/null; } || return 1; }
 __does_container_exist() { [ -n "$(command -v docker 2>/dev/null)" ] && docker ps -a | awk '{print $NF}' | grep -v '^NAMES$' | grep -q "$1" || return 1; }
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+__service_exists() { __system_service_exists "^$1" || return 1; }
+__service_is_active() { systemctl is-enabled $1 2>&1 | grep -qiw 'enabled' || return 1; }
+__service_is_running() { systemctl is-active $1 2>&1 | grep -qiw 'active' || return 1; }
+__system_service_exists() { systemctl status "$1" 2>&1 | grep 'Loaded:' | grep -iq "$1" && return 0 || return 1; }
+__system_service_active() { (systemctl is-enabled "$1" || systemctl is-active "$1") | grep -qiE 'enabled|active' || return 1; }
+__system_service_enable() { systemctl status "$1" 2>&1 | grep -iq 'inactive' && execute "systemctl enable --now $1" "Enabling service: $1" || return 1; }
+__system_service_disable() { systemctl status "$1" 2>&1 | grep -iq 'active' && execute "systemctl disable --now $1" "Disabling service: $1" || return 1; }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __get_user_name() { grep ':' /etc/passwd | awk -F ':' '{print $1}' | sort -u | grep "^${1:-root}$" || return 1; }
 __get_user_group() { grep ':' /etc/group | awk -F ':' '{print $1}' | sort -u | grep "^${1:-root}$" || return 1; }
@@ -157,20 +177,20 @@ PLUGIN_REPOS=""
 LATEST_RELEASE=""
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Specify global packages
-GLOBAL_OS_PACKAGES=""
+GLOBAL_OS_PACKAGES="bind "
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Define MacOS only packages
-MAC_OS_PACKAGES="bind"
+MAC_OS_PACKAGES=""
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Define Windows only packages
 WIN_OS_PACKAGES=""
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Define linux only packages
-LINUX_OS_PACKAGES="bind bind-utils"
+LINUX_OS_PACKAGES=""
 # Define archLinux specific packages
 ARCH_OS_PACKAGES=""
 # Define redhat specific packages
-CENTOS_OS_PACKAGES=""
+CENTOS_OS_PACKAGES="bind-utils"
 # Define debian specific packages
 DEBIAN_OS_PACKAGES=""
 # Define ubuntu specific packages
@@ -213,6 +233,7 @@ __run_prepost_install() {
   rm -Rf /etc/named/* /var/log/named/* /var/named/*
   mkdir -p /etc/named /var/log/named /var/named /var/named/dynamic /var/named/primary /var/named/secondary
   for f in "/etc/named/zones.conf" /var/log/named/{debug.info,querylog.log,security.log,xfer.log,update.log,notify.log,default.log}; do touch "$f"; done
+
   return $getRunStatus
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -231,6 +252,8 @@ __run_post_install() {
   [ -f "/etc/named//named.conf" ] && __ln /etc/named//named.conf "/etc/named.conf"
   grep 'named:' /etc/group && chgrp -Rf 'named' /etc/named /var/log/named /var/named 2>/dev/null
   grep 'named:' /etc/passwd && chown -Rf 'named' /etc/named /var/log/named /var/named 2>/dev/null
+  __service_exists named && __system_service_enable named && systemctl restart named
+
   return $getRunStatus
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
