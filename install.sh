@@ -254,11 +254,11 @@ __run_post_install() {
     [ -f "/etc/named//named.conf" ] && __ln /etc/named//named.conf "/etc/named.conf"
     grep 'named:' /etc/group && chgrp -Rf 'named' /etc/named /var/log/named /var/named 2>/dev/null
     grep 'named:' /etc/passwd && chown -Rf 'named' /etc/named /var/log/named /var/named 2>/dev/null
-    if __service_exists named; then
-      __system_service_enable named
-      systemctl restart named
-    fi
     echo "Installed on $(date)" >"/etc/named/.installed"
+  fi
+  if __service_exists named; then
+    __system_service_enable named
+    systemctl restart named
   fi
   return $getRunStatus
 }
