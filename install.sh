@@ -230,7 +230,7 @@ __run_pre_install() {
 # run before primary post install function
 __run_prepost_install() {
   local getRunStatus=0
-  rm -Rf /etc/named/* /var/log/named/* /var/named/*
+  rm -Rf /etc/named* /var/log/named/* /var/named/*
   mkdir -p /etc/named /var/log/named /var/named /var/named/dynamic /var/named/primary /var/named/secondary
   for f in "/etc/named/zones.conf" /var/log/named/{debug.info,querylog.log,security.log,xfer.log,update.log,notify.log,default.log}; do touch "$f"; done
 
